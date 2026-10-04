@@ -2,6 +2,14 @@
 
 Kiosk dashboard for the 2560×666 touch strip. Six columns: Slack, calendar, email, timers, audio, system. Spec and decisions live in [ultrawide.md](ultrawide.md).
 
+![The strip: Calendar, Slack, Email, Timers, Audio and System panels](docs/media/dashboard.png)
+
+Tap a header to cycle its view (normal, focus, more); the panel flips like a card:
+
+![Calendar header taps: normal, Next, Week, normal](docs/media/calendar-flip-panel.gif)
+
+Screenshots use made-up data (see [Screenshots and demo data](#screenshots-and-demo-data)).
+
 ## Run
 
 ```bash
@@ -44,6 +52,18 @@ npm run dump -- email
 
 Standalone runs only see secrets from `.env.local` / the environment (no safeStorage outside Electron).
 
+## Screenshots and demo data
+
+`scripts/demo/` regenerates everything in `docs/media/` with made-up data (fictional companies and people, times relative to now). It boots the real app with the Slack, Email and Calendar services swapped for `scripts/demo/fixtures.js`, audio on the mock backend, and a throwaway data folder and config, so it runs beside an installed Doombar without touching its accounts or settings. With the strip attached it covers the real dashboard for about 20 s, then quits.
+
+```bash
+npx electron scripts/demo/run.js dashboard docs/media   # strip stills + calendar flip frames
+node scripts/demo/encode.js docs/media ffmpeg           # frames -> calendar-flip*.mp4 / .gif (needs ffmpeg)
+npx electron scripts/demo/run.js setup docs/media       # setup window: accounts, sign-in, calendars
+```
+
+The System panel shows the real machine's numbers.
+
 ## Layout
 
 ```
@@ -52,7 +72,7 @@ services/     one file per integration, all extend services/base.js (start/stop/
 renderer/     one page, panel grid; panels/<name>.js mirrors services/<name>.js
 preload.js    exposes exactly dashboard.subscribe(service, cb) and dashboard.action(service, name, payload)
 services/sources/  one mail and one calendar source per provider (Gmail, Google Calendar, Outlook mail, Outlook calendar)
-scripts/      setup.js, setup-slack.js, dump.js, win-audio.ps1 (audio fallback backend)
+scripts/      setup.js, setup-slack.js, dump.js, win-audio.ps1 (audio fallback backend), demo/ (screenshots with fake data)
 config.json   layout, channels, calendars, sender list, presets, thresholds; hot-reloaded
 ```
 
@@ -85,6 +105,8 @@ The back of the Audio panel: tap the Audio header to flip to it and back (`views
 The Email and Calendar panels show any number of Google and Microsoft 365 accounts, merged: email rows from every account sorted together and grouped by client across accounts, meetings from every calendar on one timeline. A message delivered to two accounts (same `Message-ID`) shows once, counts as unread only while every copy is unread, and Mark read / Archive apply to all copies. A meeting in two calendars (same iCal UID and start) shows once. When more than one mail account is active, each email row carries a small account tag (the label, default the first part of the mail domain: `contoso` for `you@contoso.com`). If one account fails (expired sign-in, outage), a red line names it at the top of the panel and the other accounts keep updating.
 
 Adding accounts, in the setup window (section 3) or from a terminal:
+
+![Setup window, mail and calendar accounts](docs/media/setup-accounts.png)
 
 ```bash
 Doombar.exe --setup --register-microsoft      # once per install: creates the "Doombar" Entra app
