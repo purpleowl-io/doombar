@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Doombar setup</title>
+  <link rel="stylesheet" href="setup.css">
+</head>
+<body>
+  <header>
+    <h1>Doombar setup</h1>
+    <p class="sub">Tokens are tested before they are stored, then encrypted with the OS credential store. <span id="dataDir" class="mono"></span> <button class="link" id="openDataDir">open folder</button></p>
+    <div id="storageBanner" class="banner" hidden></div>
+  </header>
+
+  <section>
+    <h2>1. Claude <span id="st-ANTHROPIC_API_KEY" class="state"></span></h2>
+    <p>Used only for email summaries. Get a key at <button class="link" data-open="https://console.anthropic.com/settings/keys">console.anthropic.com</button>.</p>
+    <div class="field"><label>API key</label><input id="anthropicKey" type="password" placeholder="sk-ant-…" autocomplete="off"></div>
+    <div class="actions"><button id="saveAnthropic" class="primary">Test &amp; save</button><span id="msg-anthropic" class="msg"></span></div>
+  </section>
+
+  <section>
+    <h2>2. Slack <span id="st-SLACK_USER_TOKEN" class="state"></span></h2>
+    <p>Create the app from the manifest at <button class="link" data-open="https://api.slack.com/apps?new_app=1">api.slack.com/apps</button> (Create New App → From a manifest → paste <span class="mono">slack-manifest.json</span>). Generate an app-level token with <span class="mono">connections:write</span>, then Install to Workspace and copy both OAuth tokens.</p>
+    <div class="field"><label>App-level token</label><input id="slackApp" type="password" placeholder="xapp-…" autocomplete="off"></div>
+    <div class="field"><label>User OAuth token</label><input id="slackUser" type="password" placeholder="xoxp-…" autocomplete="off"></div>
+    <div class="field"><label>Bot OAuth token</label><input id="slackBot" type="password" placeholder="xoxb-… (optional, health check only)" autocomplete="off"></div>
+    <div class="actions"><button id="saveSlack" class="primary">Test &amp; save</button><span id="msg-slack" class="msg"></span></div>
+  </section>
+
+  <section>
+    <h2>3. Google Calendar &amp; Gmail <span id="st-GOOGLE_REFRESH_TOKEN" class="state"></span></h2>
+    <p>Google needs an OAuth client before it will show a consent screen. One-time, about five minutes:</p>
+    <ol>
+      <li><button class="link" data-open="https://console.cloud.google.com/projectcreate">Create a project</button> (any name, e.g. Doombar).</li>
+      <li>Enable the <button class="link" data-open="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com">Calendar API</button> and the <button class="link" data-open="https://console.cloud.google.com/apis/library/gmail.googleapis.com">Gmail API</button>.</li>
+      <li><button class="link" data-open="https://console.cloud.google.com/auth/overview">OAuth consent</button>: choose <b>Internal</b> (you are on a Workspace account; Internal needs no verification and refresh tokens never expire). If only External is offered, add yourself as a test user and publish the app afterwards, otherwise the token dies after 7 days.</li>
+      <li><button class="link" data-open="https://console.cloud.google.com/apis/credentials/oauthclient">Create an OAuth client ID</button> of type <b>Desktop app</b>. Paste its ID and secret here.</li>
+    </ol>
+    <div class="field"><label>Client ID</label><input id="googleId" placeholder="….apps.googleusercontent.com" autocomplete="off"></div>
+    <div class="field"><label>Client secret</label><input id="googleSecret" type="password" placeholder="GOCSPX-…" autocomplete="off"></div>
+    <div class="actions"><button id="connectGoogle" class="primary">Connect Google</button><span id="msg-google" class="msg"></span></div>
+    <div id="googleUrlBox" class="urlbox" hidden>
+      <p>The browser should have opened. If not, use this link:</p>
+      <div class="url mono" id="googleUrl"></div>
+      <div class="actions"><button id="openGoogleUrl">Open in browser</button><button id="copyGoogleUrl">Copy link</button></div>
+    </div>
+  </section>
+
+  <h1 class="part">Dashboard</h1>
+  <p class="sub">What the panels show. Saved into <span class="mono">config.json</span> in the data folder; a running dashboard picks changes up within a second.</p>
+
+  <section>
+    <h2>4. Slack channels <span id="slackCount" class="state"></span></h2>
+    <p>Channels, DMs, and group DMs you are in. Checked ones get a row in the Slack panel.</p>
+    <div class="actions"><button id="loadSlack">Load from Slack</button><input id="slackFilter" class="filter" placeholder="Filter…" autocomplete="off" hidden><span id="msg-slackList" class="msg"></span></div>
+    <div id="slackList" class="picklist" hidden></div>
+    <div class="field"><label>Preview messages</label><input id="slackPreview" type="number" min="1" max="20" class="short"></div>
+    <div class="field"><label>Hide quiet after (days)</label><input id="slackActiveDays" type="number" min="0" max="365" class="short"></div>
+    <p class="hint">Channels with no message in this many days are left off the panel. 0 shows them all.</p>
+    <div class="actions"><button id="saveSlackSettings" class="primary">Save channels</button><span id="msg-slackSettings" class="msg"></span></div>
+  </section>
+
+  <section>
+    <h2>5. Email senders</h2>
+    <p>One per line. <span class="mono">acme</span> matches any domain with that label (acme.com, mail.acme.io); <span class="mono">globex.com</span> matches that domain and its subdomains; <span class="mono">bob@x.com</span> matches one address. Long unread prospect mail is summarised automatically.</p>
+    <div class="twocol">
+      <div><label for="senders">Customers</label><textarea id="senders" rows="9" spellcheck="false"></textarea></div>
+      <div><label for="prospects">Prospects</label><textarea id="prospects" rows="9" spellcheck="false"></textarea></div>
+    </div>
+    <div class="field"><label>Rows</label><select id="emailGroupBy">
+      <option value="client">One per client: newest message, badge counts its unread</option>
+      <option value="sender">One per sender address</option>
+      <option value="none">Every message</option>
+    </select></div>
+    <div class="actions"><button id="saveEmail" class="primary">Save senders</button><span id="msg-email" class="msg"></span></div>
+  </section>
+
+  <section>
+    <h2>6. Calendars &amp; colours</h2>
+    <p>Checked calendars are merged into the Calendar panel; the colour marks their events.</p>
+    <div class="actions"><button id="loadCalendars">Load from Google</button><span id="msg-calList" class="msg"></span></div>
+    <div id="calList" class="picklist cals"></div>
+    <div class="field"><label>Alert before (min)</label><input id="alertMinutes" type="number" min="0" max="60" class="short"></div>
+    <div class="actions"><button id="saveCalendars" class="primary">Save calendars</button><span id="msg-cal" class="msg"></span></div>
+  </section>
+
+  <section>
+    <h2>7. Theme, visualizer &amp; unread tint</h2>
+    <div class="field"><label>Theme</label><select id="themeMode"></select></div>
+    <div class="field" id="pairRow"><label>Dark / light pair</label><span class="inline"><select id="darkTheme"></select><select id="lightTheme"></select></span></div>
+    <div class="field"><label>Under now-playing</label><select id="visual">
+      <option value="spectrum">Spectrum</option>
+      <option value="art">Album art (spectrum when the track has none)</option>
+      <option value="none">Nothing</option>
+    </select></div>
+    <div class="field"><label>Bar colour</label><span class="inline">
+      <label class="check"><input type="radio" name="vizColor" value="accent"> Accent</label>
+      <label class="check"><input type="radio" name="vizColor" value="energy"> Energy (cool when quieter than lately, warm when louder)</label>
+      <label class="check"><input type="radio" name="vizColor" value="sustain"> Sustain (each bar shifts hue the longer its band holds steady)</label>
+    </span></div>
+    <p class="hint">Tapping the spectrum on the strip also cycles through these, then album art, then back.</p>
+    <div class="field"><label>Energy window (s)</label><input id="energySeconds" type="number" min="1" max="120" step="1" class="short"></div>
+    <div class="field"><label>Sustain to full (s)</label><input id="sustainSeconds" type="number" min="1" max="120" step="1" class="short"></div>
+    <div class="field"><label>Energy gradient</label><label class="check"><input type="checkbox" id="energyTheme"> Use theme colours (accent-2 → accent → amber → red)</label></div>
+    <div class="field" id="stopsRow"><label>Quiet → loud</label><span class="inline" id="energyStops"></span></div>
+    <div class="field" id="previewRow"><label></label><div id="energyPreview" class="gradient"></div></div>
+    <div class="field"><label>Unread tint</label><label class="check"><input type="checkbox" id="unreadOn"> Slack and Email panels warm up while something is unread</label></div>
+    <div class="field"><label>Header sweep</label><label class="check"><input type="checkbox" id="sweepOn"> A soft light sweep across the panel header on new unread, repeating as a reminder</label></div>
+    <div class="field"><label>Sweep timing (s)</label><span class="inline">
+      <label class="check">takes <input id="sweepSeconds" type="number" min="0.3" max="10" step="0.1" class="short"></label>
+      <label class="check">every <input id="sweepEvery" type="number" min="3" max="3600" step="1" class="short"></label>
+      <label class="check">then every <input id="sweepEveryBreathing" type="number" min="3" max="3600" step="1" class="short"> once breathing</label>
+    </span></div>
+    <div class="field"><label>Red after (min)</label><input id="redAfter" type="number" min="1" max="1440" class="short"></div>
+    <div class="field"><label>Breathe after (min)</label><input id="pulseAfter" type="number" min="1" max="1440" class="short"></div>
+    <div class="field"><label>Breathe speed (s)</label><input id="breatheSeconds" type="number" min="1" max="30" step="0.5" class="short"></div>
+    <p class="hint">Amber when something arrives, red by the first time, then a slow blend between two reds. Reading clears it.</p>
+    <div class="actions"><button id="saveLook" class="primary">Save look</button><span id="msg-look" class="msg"></span></div>
+  </section>
+
+  <section>
+    <h2>Import from .env.local</h2>
+    <p>If you already have a <span class="mono">.env.local</span> in the repo or in the data folder above, encrypt everything in it in one go.</p>
+    <div class="actions"><button id="importEnv">Import</button><span id="msg-import" class="msg"></span></div>
+  </section>
+
+  <script type="module" src="setup.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http://127.0.0.1:*; media-src 'self' data: http://127.0.0.1:*">
+  <title>Doombar</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="grid" class="grid"></main>
+  <div id="dim" class="dim"></div>
+  <div id="edit-bar" class="edit-bar" hidden>
+    <div id="theme-picker" class="theme-picker"></div>
+    <button id="edit-done" class="btn primary">Done</button>
+  </div>
+  <div id="blank" class="blank" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

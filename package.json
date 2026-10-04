@@ -1,0 +1,61 @@
+{
+  "name": "doombar",
+  "version": "0.1.0",
+  "description": "Ultrawide kiosk dashboard for a 2560x666 touch strip: Slack, calendar, email, timers, audio, system.",
+  "main": "main/index.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "setup": "electron scripts/setup.js",
+    "setup:slack": "electron scripts/setup-slack.js",
+    "dump": "node scripts/dump.js",
+    "test": "node --test test/*.test.js",
+    "dist": "electron-builder --win portable",
+    "deploy": "node scripts/install.js"
+  },
+  "author": "Alex",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@googleapis/calendar": "^20.0.1",
+    "@googleapis/gmail": "^22.0.1",
+    "@koromix/koffi-win32-x64": "^3.3.1",
+    "@slack/socket-mode": "^3.0.1",
+    "@slack/web-api": "^8.1.1",
+    "electron-log": "^5.4.4",
+    "google-auth-library": "^11.1.0",
+    "koffi": "^3.3.1",
+    "systeminformation": "^5.33.13",
+    "undici": "^7.30.0"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "io.purpleowl.doombar",
+    "productName": "Doombar",
+    "files": [
+      "main/**",
+      "renderer/**",
+      "services/**",
+      "preload.js",
+      "preload-setup.js",
+      "config.json",
+      "scripts/**",
+      "slack-manifest.json"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    },
+    "asarUnpack": [
+      "scripts/**"
+    ],
+    "directories": {
+      "output": "dist"
+    }
+  }
+}

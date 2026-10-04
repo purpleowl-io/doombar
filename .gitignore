@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env.local
+.env
+data/
+*.log
+doomgen/
+
+CLAUDE.md
+AGENTS.md
+HANDOFF.md

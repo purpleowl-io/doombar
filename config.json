@@ -1,0 +1,139 @@
+{
+  "display": {
+    "width": 2560,
+    "height": 666,
+    "timezone": "America/Phoenix",
+    "theme": "system",
+    "mouseFence": true,
+    "darkTheme": "midnight",
+    "lightTheme": "daylight",
+    "businessHours": {
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "start": "08:00",
+      "end": "18:00"
+    },
+    "blankAfterIdleMinutes": 30,
+    "afterHoursDim": 0.45,
+    "blankedPollFactor": 5
+  },
+  "layout": [
+    {
+      "panel": "slack",
+      "width": 560
+    },
+    {
+      "panel": "calendar",
+      "width": 440
+    },
+    {
+      "panel": "email",
+      "width": 560
+    },
+    {
+      "panel": "timers",
+      "width": 360
+    },
+    {
+      "panel": "audio",
+      "width": 560
+    },
+    {
+      "panel": "system",
+      "width": 280
+    }
+  ],
+  "slack": {
+    "channels": [
+      "general"
+    ],
+    "previewMessages": 5,
+    "activeDays": 14
+  },
+  "calendar": {
+    "calendars": [
+      {
+        "id": "primary",
+        "color": "#7c9cff",
+        "name": "Work"
+      }
+    ],
+    "pollSeconds": 120,
+    "fullResyncMinutes": 60,
+    "alertMinutes": 5
+  },
+  "email": {
+    "senders": [],
+    "prospects": [],
+    "groupBy": "client",
+    "pollSeconds": 60,
+    "newerThanDays": 7,
+    "maxMessages": 8,
+    "teamDomains": [],
+    "autoSummarizeProspectsOverChars": 1500,
+    "summaryModel": "claude-haiku-4-5",
+    "summaryMaxInputChars": 12000
+  },
+  "unreadAlert": {
+    "enabled": true,
+    "sweep": true,
+    "sweepSeconds": 1.1,
+    "sweepEverySeconds": 30,
+    "sweepEveryBreathingSeconds": 12,
+    "breatheSeconds": 3.5,
+    "redAfterMinutes": 30,
+    "pulseAfterMinutes": 60,
+    "snoozeHotkey": "Ctrl+Alt+S",
+    "snoozeMinutes": 30
+  },
+  "timers": {
+    "presets": [
+      5,
+      15,
+      25,
+      50
+    ],
+    "defaultPresetMinutes": 25,
+    "steps": [
+      5,
+      10,
+      60
+    ],
+    "hotkey": "Ctrl+Alt+T",
+    "sound": true
+  },
+  "audio": {
+    "pollSeconds": 1,
+    "backend": "powershell",
+    "meterMs": 150,
+    "visualizer": true,
+    "vizColor": "energy",
+    "energySeconds": 8,
+    "energyColors": [],
+    "sustainSeconds": 10
+  },
+  "system": {
+    "pollSeconds": 2,
+    "diskPollSeconds": 30,
+    "gpu": true,
+    "thresholds": {
+      "cpuAmber": 70,
+      "cpuRed": 90,
+      "ramAmber": 85,
+      "ramRed": 95,
+      "gpuTempAmber": 70,
+      "gpuTempRed": 80,
+      "diskAmber": 85,
+      "diskRed": 95
+    }
+  },
+  "ace": {
+    "url": "http://127.0.0.1:7788",
+    "source": "unheard"
+  }
+}

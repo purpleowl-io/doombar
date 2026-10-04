@@ -1,0 +1,45 @@
+{
+  "display_information": {
+    "name": "Doombar",
+    "description": "Desk dashboard on an ultrawide touch strip",
+    "background_color": "#2b1d3a"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "Doombar",
+      "always_online": false
+    }
+  },
+  "oauth_config": {
+    "scopes": {
+      "user": [
+        "channels:history",
+        "channels:read",
+        "groups:history",
+        "groups:read",
+        "im:history",
+        "im:read",
+        "mpim:history",
+        "mpim:read",
+        "users:read",
+        "users.profile:read"
+      ],
+      "bot": [
+        "users:read"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "user_events": [
+        "message.channels",
+        "message.groups",
+        "message.im",
+        "message.mpim"
+      ]
+    },
+    "socket_mode_enabled": true,
+    "org_deploy_enabled": false,
+    "token_rotation_enabled": false
+  }
+}
