@@ -30,22 +30,32 @@
   </section>
 
   <section>
-    <h2>3. Google Calendar &amp; Gmail <span id="st-GOOGLE_REFRESH_TOKEN" class="state"></span></h2>
-    <p>Google needs an OAuth client before it will show a consent screen. One-time, about five minutes:</p>
+    <h2>3. Mail &amp; calendar accounts <span id="accountCount" class="state"></span></h2>
+    <p>Any number of Google and Microsoft 365 accounts. Their mail and calendars are merged in the panels; a message or meeting that reaches two accounts shows once. Untick Mail or Calendar to leave an account out of that panel; the label tags its rows when several accounts are shown.</p>
+    <div id="accountList" class="picklist accounts"></div>
+    <div class="actions"><button id="addMicrosoft" class="primary">Add Microsoft 365 account</button><input id="msLogin" class="filter" placeholder="user@domain (optional)" autocomplete="off"><span id="msg-ms" class="msg"></span></div>
+    <div class="actions"><button id="addGoogle" class="primary">Add Google account</button><span id="msg-google" class="msg"></span></div>
+    <div id="authUrlBox" class="urlbox" hidden>
+      <p>The browser should have opened. If not, use this link:</p>
+      <div class="url mono" id="authUrl"></div>
+      <div class="actions"><button id="openAuthUrl">Open in browser</button><button id="copyAuthUrl">Copy link</button></div>
+    </div>
+
+    <h3>Microsoft 365 app <span id="st-MICROSOFT_CLIENT_ID" class="state"></span></h3>
+    <p>One multi-tenant app registration serves every Microsoft account. <b>Register automatically</b> signs you in once and creates an app called Doombar in your directory (needs an account allowed to register apps). To do it by hand instead: <button class="link" data-open="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade">Entra → App registrations</button> → New registration, any organisation + personal accounts, platform <b>Mobile and desktop</b> with redirect <span class="mono">http://localhost</span>, allow public client flows; paste its Application (client) ID. Accounts in other organisations may need their admin to approve Doombar.</p>
+    <div class="field"><label>Client ID</label><input id="msClientId" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off"></div>
+    <div class="actions"><button id="registerMicrosoft">Register automatically</button><button id="saveMsClientId">Save client ID</button><span id="msg-msapp" class="msg"></span></div>
+
+    <h3>Google OAuth client <span id="st-GOOGLE_CLIENT_ID" class="state"></span></h3>
+    <p>One OAuth client serves every Google account. One-time, about five minutes:</p>
     <ol>
       <li><button class="link" data-open="https://console.cloud.google.com/projectcreate">Create a project</button> (any name, e.g. Doombar).</li>
       <li>Enable the <button class="link" data-open="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com">Calendar API</button> and the <button class="link" data-open="https://console.cloud.google.com/apis/library/gmail.googleapis.com">Gmail API</button>.</li>
-      <li><button class="link" data-open="https://console.cloud.google.com/auth/overview">OAuth consent</button>: choose <b>Internal</b> (you are on a Workspace account; Internal needs no verification and refresh tokens never expire). If only External is offered, add yourself as a test user and publish the app afterwards, otherwise the token dies after 7 days.</li>
-      <li><button class="link" data-open="https://console.cloud.google.com/apis/credentials/oauthclient">Create an OAuth client ID</button> of type <b>Desktop app</b>. Paste its ID and secret here.</li>
+      <li><button class="link" data-open="https://console.cloud.google.com/auth/overview">OAuth consent</button>: <b>Internal</b> only admits accounts of that Workspace. For accounts in other Workspaces or gmail.com choose <b>External</b>, add each address as a test user, and publish the app, otherwise tokens die after 7 days.</li>
+      <li><button class="link" data-open="https://console.cloud.google.com/apis/credentials/oauthclient">Create an OAuth client ID</button> of type <b>Desktop app</b>. Paste its ID and secret here (once; leave empty afterwards).</li>
     </ol>
     <div class="field"><label>Client ID</label><input id="googleId" placeholder="….apps.googleusercontent.com" autocomplete="off"></div>
     <div class="field"><label>Client secret</label><input id="googleSecret" type="password" placeholder="GOCSPX-…" autocomplete="off"></div>
-    <div class="actions"><button id="connectGoogle" class="primary">Connect Google</button><span id="msg-google" class="msg"></span></div>
-    <div id="googleUrlBox" class="urlbox" hidden>
-      <p>The browser should have opened. If not, use this link:</p>
-      <div class="url mono" id="googleUrl"></div>
-      <div class="actions"><button id="openGoogleUrl">Open in browser</button><button id="copyGoogleUrl">Copy link</button></div>
-    </div>
   </section>
 
   <h1 class="part">Dashboard</h1>
@@ -79,8 +89,8 @@
 
   <section>
     <h2>6. Calendars &amp; colours</h2>
-    <p>Checked calendars are merged into the Calendar panel; the colour marks their events.</p>
-    <div class="actions"><button id="loadCalendars">Load from Google</button><span id="msg-calList" class="msg"></span></div>
+    <p>Checked calendars, from every account, are merged into the Calendar panel; the colour marks their events. After loading, an account with nothing checked is left out of the panel; a newly added account shows its main calendar until you choose.</p>
+    <div class="actions"><button id="loadCalendars">Load from accounts</button><span id="msg-calList" class="msg"></span></div>
     <div id="calList" class="picklist cals"></div>
     <div class="field"><label>Alert before (min)</label><input id="alertMinutes" type="number" min="0" max="60" class="short"></div>
     <div class="actions"><button id="saveCalendars" class="primary">Save calendars</button><span id="msg-cal" class="msg"></span></div>

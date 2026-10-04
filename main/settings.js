@@ -62,6 +62,8 @@ function sanitizeSettings(p) {
       const id = str(c && c.id, 300);
       if (!id) return null;
       const cal = { id };
+      // Owning account id (services/accounts.js slug); absent means the first Google account.
+      if (/^[a-z0-9-]{1,60}$/.test(str(c.account, 60))) cal.account = str(c.account, 60);
       if (str(c.name, 80)) cal.name = str(c.name, 80);
       if (hex(c.color)) cal.color = hex(c.color);
       return cal;

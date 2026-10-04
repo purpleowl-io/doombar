@@ -1,4 +1,4 @@
-import { Panel, h, timeShort } from './base.js';
+import { Panel, h, timeShort, accountWarning } from './base.js';
 
 function countdown(ms) {
   const m = Math.round(ms / 60000);
@@ -17,7 +17,7 @@ export class CalendarPanel extends Panel {
     const view = this.view;
     const next = d.events.find((e) => e.id === d.nextId) || null;
     this.next = next;
-    const parts = [];
+    const parts = [accountWarning(d.accounts)].filter(Boolean);
 
     // Focus view: only today's next meeting, and only once it is within
     // calendar.focusHours (4); nothing else.

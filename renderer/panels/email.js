@@ -1,4 +1,4 @@
-import { Panel, h, relTime } from './base.js';
+import { Panel, h, relTime, accountWarning } from './base.js';
 
 // Views (header tap): normal = email.maxMessages rows from the last
 // email.newerThanDays; focus = every row with unread mail; more = everything the
@@ -19,7 +19,7 @@ export class EmailPanel extends Panel {
     const view = this.view;
     const shown = view === 'more' ? d.messages : view === 'focus' ? d.messages.filter((m) => unreadOf(m).length) : recent;
     if (!shown.length) {
-      this.body.replaceChildren(h('div', { class: 'empty', text: view === 'focus' ? 'All caught up' : view === 'more' ? 'No client mail this month' : 'No client mail this week' }));
+      this.body.replaceChildren(...[accountWarning(d.accounts)].filter(Boolean), h('div', { class: 'empty', text: view === 'focus' ? 'All caught up' : view === 'more' ? 'No client mail this month' : 'No client mail this week' }));
       return;
     }
     const rows = shown.map((m) => {
@@ -39,6 +39,7 @@ export class EmailPanel extends Panel {
           h('div', { class: 'row-main' },
             h('div', { class: 'row-title' },
               h('span', { class: 'name', text: m.fromName }),
+              m.accountLabel ? h('span', { class: 'pill acct', text: m.accountLabel }) : null,
               m.attachments ? h('span', { class: 'pill', text: `📎 ${m.attachments}` }) : null,
               m.handled ? h('span', { class: 'pill', text: m.handled.by === 'reply' ? `↩ ${m.handled.name}` : '🏷 labelled' }) : null,
               h('span', { class: 'time', text: relTime(m.date, this.tz) })),
@@ -61,6 +62,6 @@ export class EmailPanel extends Panel {
         ],
       });
     });
-    this.body.replaceChildren(h('div', { class: 'rows' }, ...rows));
+    this.body.replaceChildren(...[accountWarning(d.accounts)].filter(Boolean), h('div', { class: 'rows' }, ...rows));
   }
 }

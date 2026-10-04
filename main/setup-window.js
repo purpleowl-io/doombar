@@ -1,6 +1,6 @@
 'use strict';
-// Setup window: paste tokens, test them, connect Google with a visible consent
-// link, then pick what the panels show (Slack channels, email senders, calendars,
+// Setup window: paste tokens, test them, sign in Google and Microsoft 365 accounts
+// with a visible consent link, then pick what the panels show (Slack channels, email senders, calendars,
 // theme, visualizer). Opened by `Doombar.exe --setup` or `npm run setup`.
 // Separate from the dashboard window, which never shows auth UI. Settings go
 // into the user config.json; a running dashboard hot-reloads them.
@@ -72,30 +72,22 @@ function registerHandlers() {
     } catch (e) { return { error: e.data?.error || e.message }; }
   });
 
-  ipcMain.handle('setup:google', async (_e, { clientId, clientSecret }) => {
-    clientId = String(clientId || '').trim(); clientSecret = String(clientSecret || '').trim();
-    if (!clientId || !clientSecret) return { error: 'client ID and client secret are both required' };
-    const { authorizeInteractive } = require('../services/google');
-    try {
-      const refresh = await authorizeInteractive({
-        clientId, clientSecret,
-        openUrl: async (url) => {
-          send('setup:googleUrl', url);
-          try { await shell.openExternal(url); } catch (e) { log.warn('could not open browser:', e.message); }
-        },
-      });
-      const stored = [];
-      try {
-        secrets.set('GOOGLE_CLIENT_ID', clientId);
-        secrets.set('GOOGLE_CLIENT_SECRET', clientSecret);
-        secrets.set('GOOGLE_REFRESH_TOKEN', refresh);
-        stored.push('stored encrypted');
-      } catch (e) {
-        return { ok: true, refreshToken: refresh, detail: `Google approved, but could not store: ${e.message}. Copy the refresh token into .env.local as GOOGLE_REFRESH_TOKEN.` };
-      }
-      return { ok: true, detail: `Google connected and ${stored.join(', ')}` };
-    } catch (e) { return { error: e.message }; }
-  });
+  // --- mail/calendar accounts (main/account-setup.js) ---------------------
+  const accountSetup = require('./account-setup');
+  // Browser consent: the URL also goes to the window in case the browser did not open.
+  const openUrl = async (url) => {
+    send('setup:authUrl', url);
+    try { await shell.openExternal(url); } catch (e) { log.warn('could not open browser:', e.message); }
+  };
+  const wrap = (fn) => async (...args) => { try { return { ok: true, ...(await fn(...args)) }; } catch (e) { return { error: e.message }; } };
+
+  ipcMain.handle('setup:accounts', wrap(() => ({ accounts: accountSetup.listWithStatus(), microsoftApp: !!secrets.get('MICROSOFT_CLIENT_ID'), googleClient: !!(secrets.get('GOOGLE_CLIENT_ID') && secrets.get('GOOGLE_CLIENT_SECRET')) })));
+  ipcMain.handle('setup:addGoogle', wrap((_e, { clientId, clientSecret } = {}) =>
+    accountSetup.addGoogleAccount({ openUrl, clientId: String(clientId || '').trim(), clientSecret: String(clientSecret || '').trim() })));
+  ipcMain.handle('setup:registerMicrosoft', wrap(() => accountSetup.registerMicrosoftApp({ openUrl })));
+  ipcMain.handle('setup:addMicrosoft', wrap((_e, { loginHint } = {}) => accountSetup.addMicrosoftAccount({ openUrl, loginHint: String(loginHint || '').trim() || undefined })));
+  ipcMain.handle('setup:removeAccount', wrap((_e, id) => accountSetup.removeAccount(String(id))));
+  ipcMain.handle('setup:accountFlags', wrap((_e, id, flags) => accountSetup.setAccountFlags(String(id), flags || {})));
 
   ipcMain.handle('setup:importEnv', () => {
     const vars = { ...env.parseFile(path.join(projectRoot, '.env.local')), ...env.parseFile(path.join(ensureDataDir(), '.env.local')) };
@@ -156,17 +148,7 @@ function registerHandlers() {
     } catch (e) { return { error: e.data?.error || e.message }; }
   });
 
-  ipcMain.handle('setup:googleCalendars', async () => {
-    const { authClient } = require('../services/google');
-    const auth = authClient();
-    if (!auth) return { error: 'connect Google above first' };
-    try {
-      const { calendar } = require('@googleapis/calendar');
-      const res = await calendar({ version: 'v3', auth }).calendarList.list({ maxResults: 250 });
-      const calendars = (res.data.items || []).map((c) => ({ id: c.primary ? 'primary' : c.id, altId: c.id, name: c.summaryOverride || c.summary || c.id, color: c.backgroundColor || null, primary: !!c.primary }));
-      return { ok: true, calendars };
-    } catch (e) { return { error: e.message }; }
-  });
+  ipcMain.handle('setup:calendars', wrap(() => accountSetup.allCalendars()));
 
   ipcMain.handle('setup:open', (_e, url) => {
     if (!/^https?:\/\//.test(url)) return { error: 'refusing to open ' + url };

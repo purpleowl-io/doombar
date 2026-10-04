@@ -56,20 +56,72 @@ $('saveSlack').addEventListener('click', async () => {
   busy($('saveSlack'), false); refresh();
 });
 
-let googleUrl = '';
-S.onGoogleUrl((url) => { googleUrl = url; $('googleUrl').textContent = url; $('googleUrlBox').hidden = false; });
-$('openGoogleUrl').addEventListener('click', () => googleUrl && S.open(googleUrl));
-$('copyGoogleUrl').addEventListener('click', async () => { await S.copy(googleUrl); msg('msg-google', 'link copied', 'ok'); });
+// --- accounts ---------------------------------------------------------------------
 
-$('connectGoogle').addEventListener('click', async () => {
-  const clientId = $('googleId').value.trim(), clientSecret = $('googleSecret').value.trim();
-  if (!clientId || !clientSecret) return msg('msg-google', 'client ID and secret are both required', 'err');
-  busy($('connectGoogle'), true); msg('msg-google', 'waiting for you to approve in the browser (5 min)…', 'busy');
-  $('googleUrlBox').hidden = true;
-  const r = await S.google({ clientId, clientSecret });
-  if (r.error) msg('msg-google', r.error, 'err');
-  else { msg('msg-google', r.detail, 'ok'); if (r.refreshToken) { $('googleUrl').textContent = `GOOGLE_REFRESH_TOKEN=${r.refreshToken}`; googleUrl = r.refreshToken; $('googleUrlBox').hidden = false; } else { $('googleUrlBox').hidden = true; $('googleSecret').value = ''; } }
-  busy($('connectGoogle'), false); refresh();
+let authUrl = '';
+S.onAuthUrl((url) => { authUrl = url; $('authUrl').textContent = url; $('authUrlBox').hidden = false; });
+$('openAuthUrl').addEventListener('click', () => authUrl && S.open(authUrl));
+$('copyAuthUrl').addEventListener('click', async () => { await S.copy(authUrl); $('authUrlBox').querySelector('p').textContent = 'Link copied.'; });
+
+let accounts = [];
+async function loadAccounts() {
+  const r = await S.accounts();
+  if (r.error) { $('accountList').replaceChildren(el('div', { class: 'group', text: r.error })); return; }
+  accounts = r.accounts;
+  $('accountCount').textContent = accounts.length ? `${accounts.length} account${accounts.length > 1 ? 's' : ''}` : 'none yet';
+  $('accountCount').className = `state ${accounts.length ? 'set' : ''}`;
+  $('addMicrosoft').disabled = !r.microsoftApp;
+  $('addMicrosoft').title = r.microsoftApp ? '' : 'register the Microsoft app below first';
+  const flag = (a, key) => el('label', { class: 'check' }, el('input', { type: 'checkbox', checked: a[key], onchange: async (e) => {
+    const res = await S.accountFlags(a.id, { [key]: e.target.checked });
+    if (res.error) { e.target.checked = !e.target.checked; msg('msg-ms', res.error, 'err'); }
+  } }), key === 'mail' ? 'Mail' : 'Calendar');
+  $('accountList').replaceChildren(...accounts.map((a) => el('div', { class: `item${a.signedIn ? '' : ' missing'}` },
+    el('span', { class: 'pill', text: a.provider === 'google' ? 'Google' : 'Microsoft' }),
+    el('span', { class: 'lbl', text: a.email || a.id }),
+    el('input', { class: 'name short', value: a.label, title: 'label shown on rows', onchange: (e) => S.accountFlags(a.id, { label: e.target.value }).then(loadAccounts) }),
+    flag(a, 'mail'), flag(a, 'calendar'),
+    el('span', { class: 'meta', text: a.signedIn ? '' : 'not signed in' }),
+    el('button', { class: 'small', text: 'Remove', onclick: async () => {
+      if (!confirm(`Remove ${a.email || a.id}? Its mail and calendars leave the dashboard and its sign-in is deleted.`)) return;
+      const res = await S.removeAccount(a.id);
+      if (res.error) msg('msg-ms', res.error, 'err');
+      loadAccounts(); refresh();
+    } }))));
+  if (!accounts.length) $('accountList').replaceChildren(el('div', { class: 'group', text: 'No accounts yet. Add one below.' }));
+}
+
+async function signIn(btn, msgId, call, label) {
+  busy(btn, true); msg(msgId, 'waiting for you to approve in the browser (5 min)…', 'busy');
+  $('authUrlBox').hidden = true;
+  const r = await call();
+  $('authUrlBox').hidden = true;
+  if (r.error) msg(msgId, r.error, 'err');
+  else msg(msgId, label(r), 'ok');
+  busy(btn, false); loadAccounts(); refresh();
+  return r;
+}
+
+$('addMicrosoft').addEventListener('click', () => signIn($('addMicrosoft'), 'msg-ms',
+  () => S.addMicrosoft({ loginHint: $('msLogin').value }),
+  (a) => `${a.email} ${a.updated ? 'signed in again' : 'added'}`));
+
+$('addGoogle').addEventListener('click', async () => {
+  const r = await signIn($('addGoogle'), 'msg-google',
+    () => S.addGoogle({ clientId: $('googleId').value, clientSecret: $('googleSecret').value }),
+    (a) => `${a.email} ${a.updated ? 'signed in again' : 'added'}`);
+  if (!r.error) { $('googleId').value = ''; $('googleSecret').value = ''; }
+});
+
+$('registerMicrosoft').addEventListener('click', () => signIn($('registerMicrosoft'), 'msg-msapp',
+  () => S.registerMicrosoft(),
+  (r) => `${r.created ? 'created' : 'reused'} app ${r.clientId} in your directory`));
+
+$('saveMsClientId').addEventListener('click', async () => {
+  const id = $('msClientId').value.trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return msg('msg-msapp', 'that is not an application (client) ID', 'err');
+  if (await saveAll([['MICROSOFT_CLIENT_ID', id]], 'msg-msapp')) { msg('msg-msapp', 'saved', 'ok'); $('msClientId').value = ''; }
+  loadAccounts(); refresh();
 });
 
 $('importEnv').addEventListener('click', async () => {
@@ -161,33 +213,60 @@ const lines = (id) => $(id).value.split(/[\n,]+/).map((s) => s.trim()).filter(Bo
 $('saveEmail').addEventListener('click', () => saveSettings(
   { email: { senders: lines('senders'), prospects: lines('prospects'), groupBy: $('emailGroupBy').value } }, 'msg-email', $('saveEmail')));
 
-// Calendars: rows start from config (all checked); loading from Google adds the rest.
+// Calendars: rows start from config (all checked); loading from the accounts adds
+// the rest. Rows are keyed by account + calendar id.
 let cals = [];
+let calsLoaded = false;
+const acctOf = (id) => accounts.find((a) => a.id === id);
+// Same palette and order as services/calendar.js uses for an account's default calendar.
+const ACCOUNT_COLORS = ['#7c9cff', '#4fc3a1', '#f5b950', '#ff7aa2', '#b388ff'];
+const calAccounts = () => accounts.filter((a) => a.calendar).map((a) => a.id);
 function renderCals() {
   $('calList').replaceChildren(...cals.map((c) => el('div', { class: `item${c.missing ? ' missing' : ''}` },
     el('input', { type: 'checkbox', checked: c.on, onchange: (e) => { c.on = e.target.checked; } }),
     el('input', { type: 'color', value: c.color, oninput: (e) => { c.color = e.target.value; } }),
     el('input', { class: 'name', value: c.name, placeholder: c.id, oninput: (e) => { c.name = e.target.value; } }),
-    el('span', { class: 'meta', text: c.missing ? 'not in your calendar list' : c.id, title: c.id }))));
+    el('span', { class: 'pill', text: acctOf(c.account)?.label || c.account || 'first Google' }),
+    el('span', { class: 'meta', text: c.missing ? 'not in that account\'s calendar list' : c.id, title: c.id }))));
 }
 $('loadCalendars').addEventListener('click', async () => {
   busy($('loadCalendars'), true); msg('msg-calList', 'loading…', 'busy');
-  const r = await S.googleCalendars();
+  const r = await S.calendars();
   busy($('loadCalendars'), false);
   if (r.error) return msg('msg-calList', r.error, 'err');
+  // Entries without an account belong to the first Google account (see services/calendar.js).
+  const fallback = (accounts.find((a) => a.provider === 'google') || accounts[0] || {}).id;
+  for (const c of cals) c.account ||= fallback;
   const matched = new Set();
   for (const g of r.calendars) {
-    const c = cals.find((x) => x.id === g.id || x.id === g.altId);
-    if (c) { matched.add(c); c.id = g.id; if (!c.name) c.name = g.name; }
-    else { const n = { id: g.id, name: g.name, color: normHex(g.color) || '#7c9cff', on: false }; cals.push(n); matched.add(n); }
+    const c = cals.find((x) => x.account === g.account && (x.id === g.id || x.id === g.altId));
+    if (c) { matched.add(c); c.id = g.id; if (!c.name) c.name = g.name; continue; }
+    // An account with no entries shows its primary calendar today, so start that checked.
+    const shownByDefault = g.primary && acctOf(g.account)?.calendar && !cals.some((x) => x.account === g.account);
+    const color = shownByDefault ? ACCOUNT_COLORS[calAccounts().indexOf(g.account) % ACCOUNT_COLORS.length] : normHex(g.color) || '#7c9cff';
+    const n = { account: g.account, id: g.id, name: shownByDefault ? g.accountLabel : g.name, color, on: !!shownByDefault };
+    cals.push(n); matched.add(n);
   }
   for (const c of cals) c.missing = !matched.has(c);
-  msg('msg-calList', `${r.calendars.length} calendars`, 'ok');
+  cals.sort((a, b) => accounts.findIndex((x) => x.id === a.account) - accounts.findIndex((x) => x.id === b.account));
+  calsLoaded = true;
+  msg('msg-calList', `${r.calendars.length} calendars${r.errors.length ? `; ${r.errors.join('; ')}` : ''}`, r.errors.length ? 'err' : 'ok');
   renderCals();
 });
-$('saveCalendars').addEventListener('click', () => saveSettings(
-  { calendar: { calendars: cals.filter((c) => c.on).map(({ id, name, color }) => ({ id, name, color })), alertMinutes: Number($('alertMinutes').value) } },
-  'msg-cal', $('saveCalendars')));
+$('saveCalendars').addEventListener('click', async () => {
+  const on = cals.filter((c) => c.on);
+  const ok = await saveSettings(
+    { calendar: { calendars: on.map(({ account, id, name, color }) => ({ account, id, name, color })), alertMinutes: Number($('alertMinutes').value) } },
+    'msg-cal', $('saveCalendars'));
+  // After a load every account's calendars are listed, so none checked means "leave it out".
+  if (ok && calsLoaded) {
+    for (const a of accounts) {
+      const want = on.some((c) => c.account === a.id);
+      if (want !== a.calendar) await S.accountFlags(a.id, { calendar: want });
+    }
+    loadAccounts();
+  }
+});
 
 function normHex(c) {
   const long = /^#?([0-9a-f]{6})$/i.exec(c || '');
@@ -250,7 +329,7 @@ async function loadSettings() {
   $('emailGroupBy').value = email.groupBy || 'client';
 
   cals = (calendar.calendars || []).map((c) => (typeof c === 'string' ? { id: c } : c))
-    .map((c) => ({ id: c.id, name: c.name || '', color: normHex(c.color) || '#7c9cff', on: true }));
+    .map((c) => ({ account: c.account || null, id: c.id, name: c.name || '', color: normHex(c.color) || '#7c9cff', on: true }));
   $('alertMinutes').value = calendar.alertMinutes ?? 5;
   renderCals();
 
@@ -278,4 +357,4 @@ async function loadSettings() {
 }
 
 refresh();
-loadSettings();
+loadAccounts().then(loadSettings);

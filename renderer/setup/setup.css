@@ -59,3 +59,7 @@ label.check { display: inline-flex; align-items: center; gap: 8px; color: var(--
 .gradient { height: 18px; border-radius: 9px; border: 1px solid var(--line); }
 button.small { padding: 4px 10px; font-size: 14px; }
 .picklist.cals .item .meta { width: 240px; flex: none; }
+h3 { font-size: 16px; margin: 22px 0 6px; display: flex; align-items: center; gap: 10px; }
+.pill { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--panel); color: var(--dim); white-space: nowrap; }
+.picklist.accounts { max-height: none; }
+.picklist.accounts .item input.name { width: 110px; font-family: inherit; padding: 5px 8px; }

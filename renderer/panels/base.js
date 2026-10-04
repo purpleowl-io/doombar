@@ -45,6 +45,13 @@ export function bytes(n) {
   return `${Math.round(n)} B`;
 }
 
+// One line per merged account whose last poll failed (email/calendar state.accounts);
+// the other accounts keep showing. Null when all are fine.
+export function accountWarning(accounts) {
+  const bad = (accounts || []).filter((a) => a.error);
+  return bad.length ? h('div', { class: 'acct-warn', text: bad.map((a) => `⚠ ${a.label}: ${a.error}`).join(' · ') }) : null;
+}
+
 export const VIEWS = ['normal', 'focus', 'more'];
 
 // A positive number of seconds from config, else the default.

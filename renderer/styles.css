@@ -265,6 +265,8 @@ body.blanked .panel.unread-alert.pulsing { animation-play-state: paused; }
 .empty { color: var(--fg-faint); padding: 24px 18px; font-size: 20px; }
 .notice { margin: 18px; padding: 16px 18px; border-radius: 10px; background: var(--panel-2); color: var(--fg-dim); font-size: 19px; }
 .notice.error { color: var(--red); }
+.acct-warn { margin: 4px 12px; font-size: 14px; color: var(--red); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill.acct { font-size: 12px; padding: 1px 6px; flex: none; }
 
 /* Rows (lists) ------------------------------------------------------------- */
 .rows { display: flex; flex-direction: column; overflow: hidden; }

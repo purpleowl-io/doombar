@@ -30,13 +30,13 @@ function authClient() {
 // Interactive one-time authorisation used by scripts/setup.js.
 // Opens the consent URL (caller prints/opens it), listens on 127.0.0.1 for the
 // redirect, exchanges the code, and resolves with the refresh token.
-async function authorizeInteractive({ clientId, clientSecret, openUrl, scopes = SCOPES, timeoutMs = 5 * 60 * 1000 }) {
+async function authorizeInteractive({ clientId, clientSecret, openUrl, scopes = SCOPES, prompt = 'consent', timeoutMs = 5 * 60 * 1000 }) {
   const server = http.createServer();
   await new Promise((res) => server.listen(0, '127.0.0.1', res));
   const port = server.address().port;
   const redirectUri = `http://127.0.0.1:${port}/oauth2callback`;
   const client = new OAuth2Client({ clientId, clientSecret, redirectUri });
-  const url = client.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: scopes });
+  const url = client.generateAuthUrl({ access_type: 'offline', prompt, scope: scopes });
 
   // Attach the redirect handler before opening the browser so an early redirect is never dropped.
   const codePromise = new Promise((resolve, reject) => {

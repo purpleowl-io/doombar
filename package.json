@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "setup": "electron scripts/setup.js",
+    "setup": "electron . --setup",
     "setup:slack": "electron scripts/setup-slack.js",
     "dump": "node scripts/dump.js",
     "test": "node --test test/*.test.js",

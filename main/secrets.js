@@ -10,7 +10,9 @@ const NAMES = [
   'ANTHROPIC_API_KEY',
   'SLACK_APP_TOKEN', 'SLACK_USER_TOKEN', 'SLACK_BOT_TOKEN',
   'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN',
+  'MICROSOFT_CLIENT_ID',
 ];
+// Per-account refresh tokens (services/accounts.js) are stored as TOKEN_<ID>.
 
 function safeStorage() {
   if (!isElectron()) return null;
@@ -32,9 +34,10 @@ function writeFile(obj) {
 
 const cache = new Map();
 
-function get(name) {
+// fresh: re-read the file, for tokens another process (the setup window) may have replaced.
+function get(name, { fresh = false } = {}) {
   if (process.env[name]) return process.env[name];
-  if (cache.has(name)) return cache.get(name);
+  if (cache.has(name) && !fresh) return cache.get(name);
   const ss = safeStorage();
   if (!ss) return undefined;
   const entry = readFile()[name];

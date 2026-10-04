@@ -9,3 +9,10 @@ doomgen/
 CLAUDE.md
 AGENTS.md
 HANDOFF.md
+
+# local secrets and state (normally under %APPDATA%\doombar, but never commit stray copies)
+.env.*
+secrets.json
+*.sqlite
+*.sqlite-*
+*.bak-*

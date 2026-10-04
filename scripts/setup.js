@@ -5,8 +5,13 @@
 //   (no flags)   opens the setup window
 //   --cli        interactive prompts in the terminal instead
 //   --from-env   import .env.local (repo root or the data dir) into safeStorage
-//   --google     run the Google consent flow using stored client ID/secret (no typing)
 //   --status     show which secrets are configured and where the data dir is
+// Mail/calendar accounts (several Google and Microsoft 365 accounts, merged in the panels):
+//   --accounts               list accounts and whether each is signed in
+//   --add-google             sign in one more Google account (stored client ID/secret; --google is an alias)
+//   --register-microsoft     create the multi-tenant "Doombar" Entra app (once per install)
+//   --add-microsoft [--login=user@domain]   sign in a Microsoft 365 account
+//   --remove-account=<id>    remove an account and delete its token
 const readline = require('node:readline/promises');
 const { stdin, stdout } = require('node:process');
 const { app, shell } = require('electron');
@@ -18,7 +23,8 @@ async function run(args) {
   await app.whenReady();
 
   // Default: the setup window. Flags below are the headless/scripting paths.
-  const headless = ['--cli', '--from-env', '--google', '--status'].some((f) => args.includes(f));
+  const ACCOUNT_FLAGS = ['--accounts', '--add-google', '--google', '--register-microsoft', '--add-microsoft'];
+  const headless = ['--cli', '--from-env', '--status', ...ACCOUNT_FLAGS].some((f) => args.includes(f)) || args.some((a) => a.startsWith('--remove-account='));
   if (!headless) {
     const { openSetupWindow } = require('../main/setup-window');
     const win = openSetupWindow();
@@ -51,28 +57,8 @@ async function run(args) {
     return app.exit(0);
   }
 
-  if (args.includes('--google')) {
-    const clientId = secrets.get('GOOGLE_CLIENT_ID');
-    const clientSecret = secrets.get('GOOGLE_CLIENT_SECRET');
-    if (!clientId || !clientSecret) {
-      console.error('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not stored yet; put them in .env.local and run --from-env first.');
-      return app.exit(2);
-    }
-    const { authorizeInteractive } = require('../services/google');
-    try {
-      console.log('Opening the browser for Google consent…');
-      const refresh = await authorizeInteractive({
-        clientId, clientSecret,
-        openUrl: async (url) => { console.log(`If the browser did not open, visit:\n${url}\n`); await shell.openExternal(url); },
-      });
-      secrets.set('GOOGLE_REFRESH_TOKEN', refresh);
-      console.log('Google connected, refresh token stored.');
-      return app.exit(0);
-    } catch (e) {
-      console.error(`Google setup failed: ${e.message}`);
-      return app.exit(1);
-    }
-  }
+  const accountsCli = await runAccountFlags(args);
+  if (accountsCli !== null) return app.exit(accountsCli);
 
   const rl = readline.createInterface({ input: stdin, output: stdout });
   const ask = async (q) => (await rl.question(q)).trim();
@@ -121,17 +107,10 @@ async function run(args) {
   const clientId = await ask(`Google OAuth client ID${mark('GOOGLE_CLIENT_ID')}: `);
   if (clientId) {
     const clientSecret = await ask('Google OAuth client secret: ');
-    const { authorizeInteractive } = require('../services/google');
     try {
       console.log('  Opening the browser for consent…');
-      const refresh = await authorizeInteractive({
-        clientId, clientSecret,
-        openUrl: async (url) => { console.log(`  If the browser did not open, visit:\n  ${url}\n`); await shell.openExternal(url); },
-      });
-      secrets.set('GOOGLE_CLIENT_ID', clientId);
-      secrets.set('GOOGLE_CLIENT_SECRET', clientSecret);
-      secrets.set('GOOGLE_REFRESH_TOKEN', refresh);
-      console.log('  Google connected, refresh token stored.');
+      const a = await require('../main/account-setup').addGoogleAccount({ clientId, clientSecret, openUrl });
+      console.log(`  Google account ${a.email} ${a.updated ? 'updated' : 'added'}.`);
     } catch (e) {
       console.log(`  Google setup failed: ${e.message}`);
     }
@@ -141,6 +120,53 @@ async function run(args) {
   console.log('\nDone. Current status:');
   console.table(secrets.status());
   app.exit(0);
+}
+
+async function openUrl(url) {
+  console.log(`If the browser did not open, visit:\n${url}\n`);
+  await shell.openExternal(url);
+}
+
+// Account flags. Returns an exit code, or null when none of them was given.
+async function runAccountFlags(args) {
+  const setup = require('../main/account-setup');
+  const remove = args.find((a) => a.startsWith('--remove-account='));
+  try {
+    if (args.includes('--register-microsoft')) {
+      console.log('Sign in with an account allowed to register apps in its Microsoft 365 directory…');
+      const r = await setup.registerMicrosoftApp({ openUrl });
+      console.log(`${r.created ? 'Created' : 'Reused'} app registration ${r.clientId} (tenant ${r.tenantId}, by ${r.by}); client ID stored.`);
+      if (!args.includes('--add-microsoft')) return 0;
+    }
+    if (args.includes('--add-microsoft')) {
+      const login = (args.find((a) => a.startsWith('--login=')) || '').slice('--login='.length) || undefined;
+      console.log('Opening the browser for Microsoft sign-in…');
+      const a = await setup.addMicrosoftAccount({ openUrl, loginHint: login });
+      console.log(`Microsoft account ${a.email} ${a.updated ? 'updated' : 'added'} as "${a.id}".`);
+      return 0;
+    }
+    if (args.includes('--add-google') || args.includes('--google')) {
+      console.log('Opening the browser for Google consent…');
+      const a = await setup.addGoogleAccount({ openUrl });
+      console.log(`Google account ${a.email} ${a.updated ? 'updated' : 'added'} as "${a.id}".`);
+      return 0;
+    }
+    if (remove) {
+      setup.removeAccount(remove.slice('--remove-account='.length));
+      console.log('Account removed.');
+      return 0;
+    }
+    if (args.includes('--accounts')) {
+      const list = setup.listWithStatus();
+      if (!list.length) console.log('No accounts. Add one with --add-google or --add-microsoft.');
+      else console.table(list.map((a) => ({ id: a.id, provider: a.provider, email: a.email, label: a.label, mail: a.mail, calendar: a.calendar, signedIn: a.signedIn })));
+      return 0;
+    }
+  } catch (e) {
+    console.error(`Failed: ${e.message}`);
+    return 1;
+  }
+  return null;
 }
 
 module.exports = { run };
